@@ -65,7 +65,7 @@ if (!require("pacman")) {
   install_github("trinker/pacman")
 }
 
-pacman::p_load(knitr, readr, stringr, tesseract, vecsets)
+#pacman::p_load(knitr, readr, stringr, tesseract, vecsets)
 source('../lib/ifCleanToken.R')
 file_name_vec <- list.files("../data/ground_truth") #100 files in total
 ```
@@ -105,7 +105,7 @@ The referenced papers are:
 
 3. Probabilistic techniques -- [SVM garbage detection](https://dl.acm.org/citation.cfm?doid=2034617.2034626)
 
-- features are in section 5 (you can choose not to implement ‘Levenshtein distance’ feature)
+- features are in section 5 (you can choose not to implement ???Levenshtein distance??? feature)
 
 
 In this statercode, we implement the first three rules in the first paper -- rule based techniques, as an example.
@@ -151,6 +151,7 @@ The referenced papers are:
 Here, in our code, we just simply remove the detected-errors.
 ```{r}
 tesseract_delete_error_vec <- tesseract_vec[tesseract_if_clean] #1095
+
 ```
 
 # Step 5 - Performance measure
@@ -184,7 +185,7 @@ kable(OCR_performance_table, caption="Summary of OCR performance")
 
 Besides the above required measurement, you are encouraged the explore more evaluation measurements. Here are some related references:
 
-1. Karpinski, R., Lohani, D., & Belaïd, A. *Metrics for Complete Evaluation of OCR Performance*. [pdf](https://csce.ucmss.com/cr/books/2018/LFS/CSREA2018/IPC3481.pdf)
+1. Karpinski, R., Lohani, D., & Bela??d, A. *Metrics for Complete Evaluation of OCR Performance*. [pdf](https://csce.ucmss.com/cr/books/2018/LFS/CSREA2018/IPC3481.pdf)
 
 - section 2.1 Text-to-Text evaluation
 

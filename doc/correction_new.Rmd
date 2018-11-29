@@ -1,0 +1,572 @@
+---
+title: "correction"
+author: "Lingyi Zhao"
+date: "2018/11/24"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+###Combine data together
+
+```{r}
+rm(list=ls())
+data<-read.table('/Users/lingyizhao/Desktop/test_clean.txt')
+data<-t(data)
+data<-data.frame(data)
+tesseract_vec<-read.csv('/Users/lingyizhao/Desktop/Detection_list.csv', header = FALSE)
+data[,2]<-tesseract_vec[,1]
+
+
+errorwords<-matrix(data[data$V2==0,1])
+names(errorwords)<-"error"
+```
+
+###Candidate dictionary:
+
+```{r}
+candidate<-read.table('/Users/lingyizhao/Desktop/test_clean_truth.txt')
+candidate<-t(candidate)
+candidate<-data.frame(candidate)
+
+#data[,3]<-candidate[,1]
+#names(data)<-c("error","list","truth")
+```
+
+###Candidate Search:
+
+##We choose candidate from this part:
+
+```{r}
+library(stringr)
+candidate_error<-data.frame(NA, nrow=20)
+candidate_errors<-data.frame(NA, nrow=20)
+#nrow(candidate_errors)<-20
+
+distances<-data.frame()
+findcandidates_20<-data.frame()
+  threshold_c<-20
+for (j in 1:nrow(errorwords)){
+  for (i in 1:nrow(candidate)){
+    distances[i,j]<-adist(errorwords[j],candidate[i,1])
+    
+  }
+}
+save(distances, file = "distances.RData")
+
+candidate<-data.frame(candidate)
+row.names(candidate)<-c(1:nrow(candidate))
+for (p in 1:ncol(distances)){
+  candidate_order<-data.frame(candidate[order(distances[,p], decreasing = FALSE),1])
+  candidate_error<-candidate_order[1:threshold_c,1]
+  candidate_errors<-data.frame(candidate_errors, candidate_error)
+}
+candidate_errors<-candidate_errors[,c(-1,-2)]
+candidate_errors<-t(candidate_errors)
+row.names(candidate_errors)<-errorwords[,1]
+colnames(candidate_errors)<-c(1:20)
+
+save(candidate_errors, file = "candidate_errors.RData")
+  ######here, candidate_error is the small candidate set for our error words, every error word with top 20 candidates. We will use this set for the feature scoring part. 
+  ##### The row is error word, columns are there candidates. I will change name of column to the errorword, so you can find every error words with their top20 candidates by using column names
+  ##### also this will need long time to run, becasue this is a data.frame with 10104 rows and 2000+ columns. So I'll run this and then I provide guys the .RData. 
+
+```
+
+
+###Feature Scoring:
+
+##Levenshtein edit distance:
+
+```{r}
+#library(stringr)
+threshold<-100
+score_L<-data.frame()
+dists<-0
+for (j in 1:length(errorwords)){
+  for (i in 1:ncol(candidate_errors)){
+    #characters<-min(nchar(candidate[i,1]),nchar(errorwords[j]))
+    # str_c<-strsplit(candidate[i,1], "")
+    # str_e<-strsplit(errorwords[j], "")
+    # for (k in characters){
+    #   char_c_check<-str_c[[1]][k]
+    #   char_e_check<-str_e[[1]][k]
+    #   if(char_c_check!=char_e_check){
+    #     dists=dists+1+(nchar(candidate[i,1])-nchar(errorwords[j]))
+    #   }
+    # }
+    
+    dists<-adist(errorwords[j],candidate_errors[1,i])
+    score_L[i,j]<-1-(dists/(threshold+1))
+  }
+}
+
+score_L<-t(score_L)
+row.names(score_L)<-errorwords[,1]
+##every error word with their top20 candidates
+save(score_L, file = "score_L.RData")
+#score<-load("/Users/lingyizhao/Desktop/score.RData")
+variable1<-score_L
+```
+
+##String Similarity:
+
+```{r}
+nlcs<- function(str1, str2,index) {
+    l1 <- nchar(str1)
+    l2 <- nchar(str2)
+    str1 <- unlist(strsplit(str1,""))
+    #print(str1)
+    str2 <- unlist(strsplit(str2,""))
+    if(index == 1){
+      l1 <- l1-1
+      l2 <- l2-1
+      str1 <- str1[-1]
+      str2 <- str2[-1]
+    }
+  
+    nlcs_value <- (((LCS(str1, str2)$LLCS)^2)*2)/(l1+l2)
+    return(nlcs_value)
+}
+#nlcs("word","mother",1)
+
+score2<-data.frame()
+
+for (j in 1:length(errorwords)){
+  for (i in 1:nrow(candidate_errors)){
+#    for (j in 1:10){
+#  for (i in 1:10){
+    nlcs_value<-nlcs(errorwords[j],candidate_errors[i,1],0)
+    nmnlcs1 <- nlcs(errorwords[j],candidate_errors[i,1],1)
+    n<- ceiling(nchar(errorwords[j])/2)
+    nmnlcsn <- nlcs(errorwords[j],candidate_errors[i,1],n)
+    z <- nchar(errorwords[j])
+    nmnlcsz <- nlcs(errorwords[j],candidate_errors [i,1],z)
+    score2[i,j]<-0.25*nlcs_value+0.25*nmnlcs1+0.25*nmnlcsn+0.25*nmnlcsz
+  }
+}
+
+
+variable2<-load("score_SM.RData")
+```
+
+##Language popularity:
+
+```{r}
+##load candidate data
+candidate_errors<-as.data.frame(candidate_errors)
+head(candidate_errors)
+##load clean text data
+data_clean<-candidate
+##remove NA
+data_clean<-data_clean[!is.na(data_clean)]
+#candidate_errors
+#data_clean=="as"
+##function to calculate the frequency
+freq<-function(word){
+  number<-sum(data_clean==word)
+  return(number)
+}
+
+##frequency
+freq_table<-c()
+for (i in 1:nrow(candidate_errors)){
+  freq_table<-rbind(freq_table,apply(candidate_errors[i,],2,freq))
+}
+
+##frequency/max
+freq_table<-as.data.frame(freq_table)
+max_frequency<-apply(freq_table,1,max)
+freq_table$maxfreq<-max_frequency
+
+##function to calculate porpotion
+freq_score<-c()
+for ( i in 1:20){
+  freq_score<-cbind(freq_score,freq_table[,i]/freq_table[,21])
+}
+row.names(freq_score)<-row.names(candidate_errors)
+##score table
+variable3<-freq_score
+
+```
+
+##Lexion existance:
+
+```{r}
+library(quanteda)
+library(readtext)
+library(spacyr)
+library(Rcpp)
+library(magrittr)
+setwd('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data')
+load('candidate_errors.RData')
+
+matchfun<-function(c){
+  if(c%in%tk4){
+    return(1)
+  }else{
+    return(0)
+  }
+}
+
+
+#lexicon for group 1:
+f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group1/*.txt',cache=FALSE)
+mycorpus<-corpus(f)
+summary(mycorpus,5)
+txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
+txt<-gsub("\'", " ", txt)
+mastercorpus<-corpus(txt)
+tk<-tokens(mastercorpus,remove_numbers = TRUE,remove_punct = TRUE,remove_separators = TRUE,remove_symbols = TRUE,remove_hyphens=TRUE)
+tk2<-tokens_remove(tk,stopwords("english"))
+tk3<-sapply(tk2, tolower)
+summary(tk3)
+length(tk3)
+tk4<-unique(tk3)
+
+exist1<-data.frame(matrix(nrow=nrow(candidate_errors),ncol=ncol(candidate_errors)))
+
+for(i in 1:nrow(candidate_errors)){
+exist1[i,]<-as.data.frame(lapply(candidate_errors[i,],matchfun))
+}
+
+#lexicon for group 2:
+f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group2/*.txt',cache=FALSE)
+mycorpus<-corpus(f)
+summary(mycorpus,5)
+txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
+txt<-gsub("\'", " ", txt)
+mastercorpus<-corpus(txt)
+tk<-tokens(mastercorpus,remove_numbers = TRUE,remove_punct = TRUE,remove_separators = TRUE,remove_symbols = TRUE,remove_hyphens=TRUE)
+tk2<-tokens_remove(tk,stopwords("english"))
+tk3<-sapply(tk2, tolower)
+summary(tk3)
+length(tk3)
+tk4<-unique(tk3)
+
+exist2<-data.frame(matrix(nrow=nrow(candidate_errors),ncol=ncol(candidate_errors)))
+
+for(i in 1:nrow(candidate_errors)){
+  exist2[i,]<-as.data.frame(lapply(candidate_errors[i,],matchfun))
+}
+
+#lexicon for group 3:
+f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group3/*.txt',cache=FALSE)
+mycorpus<-corpus(f)
+summary(mycorpus,5)
+txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
+txt<-gsub("\'", " ", txt)
+mastercorpus<-corpus(txt)
+tk<-tokens(mastercorpus,remove_numbers = TRUE,remove_punct = TRUE,remove_separators = TRUE,remove_symbols = TRUE,remove_hyphens=TRUE)
+tk2<-tokens_remove(tk,stopwords("english"))
+tk3<-sapply(tk2, tolower)
+summary(tk3)
+length(tk3)
+tk4<-unique(tk3)
+
+exist3<-data.frame(matrix(nrow=nrow(candidate_errors),ncol=ncol(candidate_errors)))
+
+for(i in 1:nrow(candidate_errors)){
+  exist3[i,]<-as.data.frame(lapply(candidate_errors[i,],matchfun))
+}
+
+#lexicon for group 4:
+f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group4/*.txt',cache=FALSE)
+mycorpus<-corpus(f)
+summary(mycorpus,5)
+txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
+txt<-gsub("\'", " ", txt)
+mastercorpus<-corpus(txt)
+tk<-tokens(mastercorpus,remove_numbers = TRUE,remove_punct = TRUE,remove_separators = TRUE,remove_symbols = TRUE,remove_hyphens=TRUE)
+tk2<-tokens_remove(tk,stopwords("english"))
+tk3<-sapply(tk2, tolower)
+summary(tk3)
+length(tk3)
+tk4<-unique(tk3)
+
+exist4<-data.frame(matrix(nrow=nrow(candidate_errors),ncol=ncol(candidate_errors)))
+
+for(i in 1:nrow(candidate_errors)){
+  exist4[i,]<-as.data.frame(lapply(candidate_errors[i,],matchfun))
+}
+
+#lexicon for group 5:
+f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group5/*.txt',cache=FALSE)
+mycorpus<-corpus(f)
+summary(mycorpus,5)
+txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
+txt<-gsub("\'", " ", txt)
+mastercorpus<-corpus(txt)
+tk<-tokens(mastercorpus,remove_numbers = TRUE,remove_punct = TRUE,remove_separators = TRUE,remove_symbols = TRUE,remove_hyphens=TRUE)
+tk2<-tokens_remove(tk,stopwords("english"))
+tk3<-sapply(tk2, tolower)
+summary(tk3)
+length(tk3)
+tk4<-unique(tk3)
+
+exist5<-data.frame(matrix(nrow=nrow(candidate_errors),ncol=ncol(candidate_errors)))
+
+for(i in 1:nrow(candidate_errors)){
+  exist5[i,]<-as.data.frame(lapply(candidate_errors[i,],matchfun))
+}
+
+#storing it in a list and in an RData file
+#all_grps$group1
+save(all_grps, file = "lexicon_existance.RData")
+lexicon_existance <- load("lexicon_existance.RData")
+variable4 <- all_grps$group1
+```
+
+##Exact-context popularity:
+
+```{r}
+library(dplyr)
+#install.packages("tidytext")
+library(tidytext)
+#install.packages("janeaustenr")
+library(janeaustenr)
+
+group=5
+index_e<-data.frame(errorwords)
+g<-1
+  for (c in 1:nrow(data)){
+    #print(c)
+    if (data[c,2]==0){
+      index_e[g,2]<-c
+      print(index_e[g,2])
+      if (c<5){
+        index1<-index_e[g,2]
+        index9<-index_e[g,2]+(group-1)
+        index_e[g,3]<-paste(data[index1:index9,1], collapse = " ")
+  }
+    if(c>10119){
+      index1<-index_e[g,2]-(group-1)
+      index9<-index_e[g,2]
+      index_e[g,3]<-paste(data[index1:index9,1], collapse = " ")
+   }
+    if(c>=5 && c<=10119){
+      index1<-index_e[g,2]-(group-1)
+      index9<-index_e[g,2]+(group-1)
+      index_e[g,3]<-paste(data[index1:index9,1], collapse = " ")
+    }
+      g<-g+1
+    }
+    
+  }
+  # index_e[g,2]<-which(data[,1]==errorwords[g])
+  # print(g)
+  
+
+candidate_replace_error<-data.frame()
+#row_total<-threshold_c*nrow(errorwords)
+a<-1
+for (b in 1:nrow(errorwords)){
+  for (d in 1:(ncol(candidate_errors))){
+    candidate_replace_error[a,1]<-gsub(index_e[b,1],candidate_errors[b,d],index_e[b,3] )
+    a<-a+1
+  }
+}
+
+freq<-data.frame()
+i<-1
+total_context<-threshold_c*length(errorwords)
+for (r in 1:nrow(candidate_replace_error)){
+  #print(r)
+  if(r<41 || r>47460){
+    b<-as.data.frame(gregexpr(candidate_replace_error[r,1], candida))
+    freq[i,1]<-candidate_replace_error[r,1]
+    if(b[,1]==-1){
+      c<-0
+      freq[i,2]<-c
+    }else{
+    c<-count(b[,1])
+    freq[i,2]<-sum(c$freq)
+    }
+    #freq[i,1]<-candidate_replace_error[r,1]
+    #freq[i,2]<-sum(c$freq)
+    i<-i+1
+  }
+  if(r>=41 && r<=47460){
+    te<-candidate_replace_error[r,1]
+    a<-austen_books()%>%
+      unnest_tokens(ngram, te, token="ngrams", n=5)
+    freq[i:(i+4),1]<-a$ngram[1:5]
+    # for (s in 1:5){
+    #   b<-as.data.frame(gregexpr(freq[i,1], candida))
+    #   c<-count(b[,1])
+    # }
+    b1<-as.data.frame(gregexpr(freq[i,1], candida))
+    if(b1[,1]==-1){
+      c1<-0
+      freq[i,2]<-c1
+    }else{
+    c1<-count(b1)
+    freq[i,2]<-sum(c1$n)
+    }
+    #c1<-count(b1[,1])
+    #freq[i,2]<-sum(c1$freq)
+    
+    b2<-as.data.frame(gregexpr(freq[i+1,1], candida))
+    if(b2[,1]==-1){
+      c2<-0
+      freq[i+1,2]<-c2
+    }else{
+    c2<-count(b2)
+    freq[i+1,2]<-sum(c2$n)
+    }
+    #c2<-count(b2[,1])
+    #freq[i+1,2]<-sum(c2$freq)
+    b3<-as.data.frame(gregexpr(freq[i+2,1], candida))
+    if(b3[,1]==-1){
+      c3<-0
+      freq[i+2,2]<-c3
+    }else{
+    c3<-count(b3)
+    freq[i+2,2]<-sum(c3$n)
+    }
+    #c3<-count(b3[,1])
+    #freq[i+2,2]<-sum(c3$freq)
+    b4<-as.data.frame(gregexpr(freq[i+3,1], candida))
+    if(b4[,1]==-1){
+      c4<-0
+      freq[i+3,2]<-c4
+    }else{
+    c4<-count(b4)
+    freq[i+3,2]<-sum(c4$n)
+    }
+    #c4<-count(b4[,1])
+    #freq[i+3,2]<-sum(c4$freq)
+    b5<-as.data.frame(gregexpr(freq[i+4,1], candida))
+    if(b5[,1]==-1){
+      c5<-0
+      freq[i+4,2]<-c5
+    }else{
+    c5<-count(b5)
+    freq[i+4,2]<-sum(c5$n)
+    }
+    #c5<-count(b5[,1])
+    #freq[i+4,2]<-sum(c5$freq)
+    i<-i+5
+  }
+  
+}
+
+#save(freq, file = "freq.RData")
+freq1<-load("/Users/lingyizhao/Desktop/freq_to_30001.RData")#30000
+freq1<-freq
+freq2<-load("/Users/lingyizhao/Desktop/freq_30000_31050.RData")#31050
+freq2<-freq[-c(5256:5260),]
+freq3<-load("/Users/lingyizhao/Desktop/freq_35000.RData")#35000
+freq3<-freq
+freq4<-load("/Users/lingyizhao/Desktop/freq_35000_38002.RData")#38002
+freq[15005:15010,2]<-0
+freq4<-freq
+freq5<-load("/Users/lingyizhao/Desktop/freq_38003_39999.RData")
+freq5<-freq
+freq6<-load("/Users/lingyizhao/Desktop/freq_40000_47500.RData")
+freq6<-freq
+freq_total<-rbind(freq1, freq2, freq3, freq4, freq5, freq6)
+
+score_Econtext<-data.frame()
+w<-41
+score_Econtext<-rbind((freq_total[1:20,2]), (freq_total[21:40,2]))
+score_Econtext<-data.frame(score_Econtext)
+c<-41
+
+for (p in 3:(nrow(errorwords)-2)){
+  #w<-c
+  for (q in 1:20){
+    score_Econtext[p,q]<-sum(freq_total[w:(w+4), 2])
+    w<-w+5
+    #c<-w
+    #print(w)
+  }
+  
+}
+
+save(freq_total, file = "freq_total.RData")
+score_Econtext[(nrow(errorwords)-1),1:20]<-freq[(nrow(freq)-40+1):(nrow(freq)-20),2]
+score_Econtext[nrow(errorwords), 1:20]<-freq[(nrow(freq)-20+1):(nrow(freq)),2]
+
+save(score_Econtext, file = "score_Econtext.RData")
+
+variable5<-score_Econtext
+```
+
+
+###Regression model: random forest:
+
+```{r}
+#install.packages("randomForest")
+library(randomForest)
+set.seed(100)
+score_sort<-data.frame()
+
+library(readxl)
+library(randomForest)
+error_truth <- read_excel('Error_truth_total.xlsx')
+#error_truth<-read.csv("Error_truth_total.csv")
+
+total_final_data<-data.frame()
+total_final_data<-data.frame(rep(errorwords, each=5))
+i<-1
+for (k in 1:nrow(candidate_errors)){
+  total_final_data[i:(i+4),2]<-matrix(t(candidate_errors[k, 1:5]))
+  total_final_data[i:(i+4),3]<-matrix(t(variable1[k, 1:5]))
+  total_final_data[i:(i+4),3]<-matrix(t(variable2[k, 1:5]))
+  total_final_data[i:(i+4),4]<-matrix(t(variable3[k, 1:5]))
+  total_final_data[i:(i+4),4]<-matrix(t(variable4[k, 1:5]))
+  total_final_data[i:(i+4),5]<-matrix(t(variable5[k, 1:5]))
+  i<-i+5
+}
+
+#install.packages("prodlim")
+library(prodlim)
+a <- matrix(row.match(total_final_data[,1:2],error_truth[,2:3]))
+x1 <- replace(a,is.na(a),0)
+x1[x1>0] = 1
+
+total_final_data$V5 <- x1
+
+number<-sample(1:nrow(total_final_data), nrow(total_final_data)*0.8)
+trainset<-total_final_data[1:9500, ]
+testset <- total_final_data[9501:11875, ]
+model<-randomForest(trainset[,3:4], y=trainset$V5, ntree=100)
+pred <- predict(model, testset[,3:4])
+pred<-matrix(pred)
+total_final_data<-cbind(total_final_data ,pred)
+# dim(label)
+# dim(trainset)
+# model
+
+```
+
+###Correct text:
+
+```{r}
+ require(data.table) ## 1.9.2
+  group <- as.data.table(total_final_data)
+  df2<-group[group[, .I[which.max(pred)], by=total_final_data$rep.errorwords..each...5.]$V1]
+  df2<-df2[,c(-7)]
+  corrected<-df2[,c(1,2)]  
+  colnames(corrected)<-c('error','ChosenCandidate') 
+  
+test_cleaned<-candidate
+
+#install.package("qdap")
+library(qdap)
+tclean<-t(test_cleaned)
+t_cleaned <- mgsub(as.character(corrected$error), corrected$ChosenCandidate, as.character(tclean))
+
+write.table(t_cleaned, 'corrected_text.txt', append = FALSE, sep = " ",
+            col.names = FALSE)
+
+for(j in seq_along(corrected$error)){
+  t_cleaned <- gsub(as.character(corrected$error[j]), corrected$ChosenCandidate[j], as.character(tclean))
+}
+```
+
