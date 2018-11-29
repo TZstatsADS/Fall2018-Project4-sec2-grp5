@@ -31,11 +31,11 @@ Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by
 
 ```
 proj/
-????????? lib/
-????????? data/
-????????? doc/
-????????? figs/
-????????? output/
+lib/The lib folder contain computation codes for your data analysis.
+data/The data folder contains the raw data of this project. It contians 100 error-files and 100 corresponding ground truth files. 
+doc/The doc folder contains main(detection).ipynb,main(correction).rmd and their corresponding .html files. It also contians the final testing report.
+figs/The figs folder contains figure files produced during the project and running of the codes.
+output/The output folder contains intermediate and final computational results, which include combined and cleaned trainning and testing data files, comerror-detection list from the detection part and the corrected test file.
 ```
 
 Please see each subfolder for a README file.
