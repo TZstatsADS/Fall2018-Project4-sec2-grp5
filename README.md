@@ -1,7 +1,7 @@
 # Project: OCR (Optical Character Recognition) 
-
-![image](figs/image1.jpg)
 ![image](figs/image2.jpg)
+![image](figs/image1.jpg)
+
 
 
 
@@ -17,20 +17,16 @@ Term: Fall 2018
 	+ Zhang, Rui (rz2406@columbia.edu)
 	+ Zhao, Lingyi (lz2570@columbia.edu)
 
-+ Project summary: In this project, we created an OCR post-processing procedure to enhance Tesseract OCR output. We deal with detection based on paper D2 and correction based on paper C2. For detection, we will give final list of all words are correct or error. For correction, we use five features for Random Forest model then give final model for error's correct candidate. 
++ Project summary: In this project, we created an OCR post-processing procedure to enhance Tesseract OCR output. We deal with detection and correction based on paper D2 and paper C2 in the doc folder. For detection, we give error detection list of all words, indicating each of them is correct or wrong. For correction, we use five features for Random Forest model then give final model for error's correct candidate. 
 	
 **Contribution statement**: ([default](doc/a_note_on_contributions.md)) 
 
-	Ma, Yunsheng: Responsibility for paper D2. 
-	
-	Namboothiri, Deepika: Responsibility for paper D2. She wrote Lexion existance feature scoring and given final changed txt.  
-	
-	Wang, Yaxin: Responsibility for paper D2.
-	
+	Wang, Yaxin: Responsible for dictionaries construction part of paper D2.
+	Ma, Yunsheng: Responsible for the detection and evaluation part of paper D2. 
+	Namboothiri, Deepika: Responsible for the trainsition between paper D2 and C2. Also, she wrote Lexion existance feature scoring and given final changed txt.  
 	Zhang, Rui: Responsibility for paper C2. She wrote String Similarity feature scoring and discussed as well as wrote random forest model with Lingyi Zhao. 
-	
 	Zhao, Lingyi: Repsonsibility for paper C2. She wrote Candidate dictionary, candidate search, Levenshtein edit distance, Exact-context popularity parts and wrote random forest model with Rui Zhang. 
-
+We split our work evenly
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
 ```
