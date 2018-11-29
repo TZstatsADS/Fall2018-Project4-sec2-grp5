@@ -17,7 +17,7 @@ Term: Fall 2018
 	+ Zhang, Rui (rz2406@columbia.edu)
 	+ Zhao, Lingyi (lz2570@columbia.edu)
 
-+ Project summary: In this project, we created an OCR post-processing procedure to enhance Tesseract OCR output. We deal with detection based on paper D2 and correction based on paper C2. For detection, we will give final list of all words are correct or error. For correction, we use five features for Random Forest model then give final model of error's correct candidate. 
++ Project summary: In this project, we created an OCR post-processing procedure to enhance Tesseract OCR output. We deal with detection based on paper D2 and correction based on paper C2. For detection, we will give final list of all words are correct or error. For correction, we use five features for Random Forest model then give final model for error's correct candidate. 
 	
 **Contribution statement**: ([default](doc/a_note_on_contributions.md)) 
 Ma, Yunsheng: Responsibility for paper D2. 
