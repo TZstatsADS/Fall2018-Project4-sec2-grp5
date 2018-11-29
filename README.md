@@ -18,8 +18,11 @@ Term: Fall 2018
 	+ Zhao, Lingyi (lz2570@columbia.edu)
 
 + Project summary: In this project, we created an OCR post-processing procedure to enhance Tesseract OCR output. We deal with detection and correction based on paper D2 and paper C2 in the doc folder. For detection, we give error detection list of all words, indicating each of them is correct or wrong. For correction, we use five features for Random Forest model then give final model for error's correct candidate. 
-```
+
 ![image](figs/performance evaluation.jpg)
+
+```
+
 	
 **Contribution statement**: ([default](doc/a_note_on_contributions.md)) 
 
