@@ -8,11 +8,11 @@ Term: Fall 2018
 
 + Team #
 + Team members
-	+ team member 1
-	+ team member 2
-	+ team member 3
-	+ team member 4
-	+ team member 5
+	+ Ma, Yunsheng  ym2650@columbia.edu
+        + Namboothiri, Deepika dsn2127@columbia.edu
+        + Wang, Yaxin  yw3042@columbia.edu
+        + Zhang, Rui  rz2406@columbia.edu
+        + Zhao, Lingyi  lz2570@columbia.edu
 
 + Project summary: In this project, we created an OCR post-processing procedure to enhance Tesseract OCR output. 
 	
