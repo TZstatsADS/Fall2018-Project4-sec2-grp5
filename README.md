@@ -8,6 +8,7 @@ Term: Fall 2018
 
 + Team #
 + Team members
+	
 	+ Ma, Yunsheng  ym2650@columbia.edu
         + Namboothiri, Deepika dsn2127@columbia.edu
         + Wang, Yaxin  yw3042@columbia.edu
