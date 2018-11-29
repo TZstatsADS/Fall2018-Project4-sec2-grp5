@@ -11,14 +11,36 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## R Markdown
 
+```{r}
+#install.packages("qualV")
+#install.packages("PTXQC")
+library(qualV)
+library(PTXQC)
+library(stringr)
+library(quanteda)
+library(readtext)
+library(spacyr)
+library(Rcpp)
+library(magrittr)
+library(dplyr)
+#install.packages("tidytext")
+library(tidytext)
+#install.packages("janeaustenr")
+library(janeaustenr)
+#install.packages("randomForest")
+library(randomForest)
+
+```
+
+
 ###Combine data together
 
 ```{r}
-rm(list=ls())
-data<-read.table('/Users/lingyizhao/Desktop/test_clean.txt')
+#rm(list=ls())
+data<-read.table('/Users/lingyizhao/Documents/GitHub/Fall2018-Project4-sec2--sec2proj4_grp5/data/test_clean.txt')
 data<-t(data)
 data<-data.frame(data)
-tesseract_vec<-read.csv('/Users/lingyizhao/Desktop/Detection_list.csv', header = FALSE)
+tesseract_vec<-read.csv('/Users/lingyizhao/Documents/GitHub/Fall2018-Project4-sec2--sec2proj4_grp5/data/Detection_list.csv', header = FALSE)
 data[,2]<-tesseract_vec[,1]
 
 
@@ -29,7 +51,7 @@ names(errorwords)<-"error"
 ###Candidate dictionary:
 
 ```{r}
-candidate<-read.table('/Users/lingyizhao/Desktop/test_clean_truth.txt')
+candidate<-read.table('/Users/lingyizhao/Documents/GitHub/Fall2018-Project4-sec2--sec2proj4_grp5/data/test_clean_truth.txt')
 candidate<-t(candidate)
 candidate<-data.frame(candidate)
 
@@ -42,7 +64,6 @@ candidate<-data.frame(candidate)
 ##We choose candidate from this part:
 
 ```{r}
-library(stringr)
 candidate_error<-data.frame(NA, nrow=20)
 candidate_errors<-data.frame(NA, nrow=20)
 #nrow(candidate_errors)<-20
@@ -75,6 +96,7 @@ save(candidate_errors, file = "candidate_errors.RData")
   ##### The row is error word, columns are there candidates. I will change name of column to the errorword, so you can find every error words with their top20 candidates by using column names
   ##### also this will need long time to run, becasue this is a data.frame with 10104 rows and 2000+ columns. So I'll run this and then I provide guys the .RData. 
 
+load("/Users/lingyizhao/Documents/GitHub/Fall2018-Project4-sec2--sec2proj4_grp5/data/candidate_errors.RData")
 ```
 
 
@@ -109,13 +131,14 @@ score_L<-t(score_L)
 row.names(score_L)<-errorwords[,1]
 ##every error word with their top20 candidates
 save(score_L, file = "score_L.RData")
-#score<-load("/Users/lingyizhao/Desktop/score.RData")
+score<-load("/Users/lingyizhao/Documents/GitHub/Fall2018-Project4-sec2--sec2proj4_grp5/data/score_L.RData")
 variable1<-score_L
 ```
 
 ##String Similarity:
 
 ```{r}
+
 nlcs<- function(str1, str2,index) {
     l1 <- nchar(str1)
     l2 <- nchar(str2)
@@ -151,7 +174,7 @@ for (j in 1:length(errorwords)){
 }
 
 
-variable2<-load("score_SM.RData")
+variable2<-load("~/score_SM.RData")
 ```
 
 ##Language popularity:
@@ -197,12 +220,8 @@ variable3<-freq_score
 ##Lexion existance:
 
 ```{r}
-library(quanteda)
-library(readtext)
-library(spacyr)
-library(Rcpp)
-library(magrittr)
-setwd('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data')
+
+#setwd('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data')
 load('candidate_errors.RData')
 
 matchfun<-function(c){
@@ -215,7 +234,7 @@ matchfun<-function(c){
 
 
 #lexicon for group 1:
-f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group1/*.txt',cache=FALSE)
+f<-readtext('~/ground_truth/group1/*.txt',cache=FALSE)
 mycorpus<-corpus(f)
 summary(mycorpus,5)
 txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
@@ -235,7 +254,7 @@ exist1[i,]<-as.data.frame(lapply(candidate_errors[i,],matchfun))
 }
 
 #lexicon for group 2:
-f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group2/*.txt',cache=FALSE)
+f<-readtext('~/ground_truth/group2/*.txt',cache=FALSE)
 mycorpus<-corpus(f)
 summary(mycorpus,5)
 txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
@@ -255,7 +274,7 @@ for(i in 1:nrow(candidate_errors)){
 }
 
 #lexicon for group 3:
-f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group3/*.txt',cache=FALSE)
+f<-readtext('~/ground_truth/group3/*.txt',cache=FALSE)
 mycorpus<-corpus(f)
 summary(mycorpus,5)
 txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
@@ -275,7 +294,7 @@ for(i in 1:nrow(candidate_errors)){
 }
 
 #lexicon for group 4:
-f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group4/*.txt',cache=FALSE)
+f<-readtext('~/ground_truth/group4/*.txt',cache=FALSE)
 mycorpus<-corpus(f)
 summary(mycorpus,5)
 txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
@@ -295,7 +314,7 @@ for(i in 1:nrow(candidate_errors)){
 }
 
 #lexicon for group 5:
-f<-readtext('C:/Users/Deepika/Documents/ADS/Project 4/Fall2018-Project4-sec2--sec2proj4_grp5/data/ground_truth/group5/*.txt',cache=FALSE)
+f<-readtext('~/ground_truth/group5/*.txt',cache=FALSE)
 mycorpus<-corpus(f)
 summary(mycorpus,5)
 txt<-texts(mycorpus, groups = rep(1, ndoc(mycorpus)))
@@ -324,11 +343,7 @@ variable4 <- all_grps$group1
 ##Exact-context popularity:
 
 ```{r}
-library(dplyr)
-#install.packages("tidytext")
-library(tidytext)
-#install.packages("janeaustenr")
-library(janeaustenr)
+
 
 group=5
 index_e<-data.frame(errorwords)
@@ -501,8 +516,7 @@ variable5<-score_Econtext
 ###Regression model: random forest:
 
 ```{r}
-#install.packages("randomForest")
-library(randomForest)
+
 set.seed(100)
 score_sort<-data.frame()
 
@@ -517,10 +531,10 @@ i<-1
 for (k in 1:nrow(candidate_errors)){
   total_final_data[i:(i+4),2]<-matrix(t(candidate_errors[k, 1:5]))
   total_final_data[i:(i+4),3]<-matrix(t(variable1[k, 1:5]))
-  total_final_data[i:(i+4),3]<-matrix(t(variable2[k, 1:5]))
-  total_final_data[i:(i+4),4]<-matrix(t(variable3[k, 1:5]))
-  total_final_data[i:(i+4),4]<-matrix(t(variable4[k, 1:5]))
-  total_final_data[i:(i+4),5]<-matrix(t(variable5[k, 1:5]))
+  total_final_data[i:(i+4),4]<-matrix(t(variable2[k, 1:5]))
+  total_final_data[i:(i+4),5]<-matrix(t(variable3[k, 1:5]))
+  total_final_data[i:(i+4),6]<-matrix(t(variable4[k, 1:5]))
+  total_final_data[i:(i+4),7]<-matrix(t(variable5[k, 1:5]))
   i<-i+5
 }
 
