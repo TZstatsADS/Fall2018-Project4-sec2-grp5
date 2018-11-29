@@ -1,0 +1,318 @@
+---
+title: "correction"
+author: "Lingyi Zhao"
+date: "2018/11/24"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+###Combine data together
+
+```{r}
+rm(list=ls())
+data<-read.table('test_clean.txt')
+data<-t(data)
+data<-data.frame(data)
+tesseract_vec<-read.csv('Detection_list.csv', header = FALSE)
+data[,2]<-tesseract_vec[,1]
+
+
+errorwords<-matrix(data[data$V2==0,1])
+#names(errorwords)<-"error"
+```
+
+###Candidate dictionary:
+
+```{r}
+candidate<-read.table('test_clean_truth.txt')
+candidate<-t(candidate)
+candidate<-data.frame(candidate)
+
+#data[,3]<-candidate[,1]
+#names(data)<-c("error","list","truth")
+```
+
+###Candidate Search:
+
+##We choose candidate from this part:
+
+```{r}
+library(stringr)
+candidate_error<-data.frame(NA, nrow=20)
+candidate_errors<-data.frame(NA, nrow=20)
+#nrow(candidate_errors)<-20
+
+distances<-data.frame()
+findcandidates_20<-data.frame()
+  threshold_c<-20
+for (j in 1:nrow(errorwords)){
+  for (i in 1:nrow(candidate)){
+    distances[i,j]<-adist(errorwords[j],candidate[i,1])
+    
+  }
+}
+save(distances, file = "distances.RData")
+
+candidate<-data.frame(candidate)
+row.names(candidate)<-c(1:nrow(candidate))
+for (p in 1:ncol(distances)){
+  candidate_order<-data.frame(candidate[order(distances[,p], decreasing = FALSE),1])
+  candidate_error<-candidate_order[1:threshold_c,1]
+  candidate_errors<-data.frame(candidate_errors, candidate_error)
+}
+candidate_errors<-candidate_errors[,c(-1,-2)]
+candidate_errors<-t(candidate_errors)
+row.names(candidate_errors)<-errorwords[,1]
+colnames(candidate_errors)<-c(1:20)
+
+save(candidate_errors, file = "candidate_errors.RData")
+  ######here, candidate_error is the small candidate set for our error words, every error word with top 20 candidates. We will use this set for the feature scoring part. 
+  ##### The row is error word, columns are there candidates. I will change name of column to the errorword, so you can find every error words with their top20 candidates by using column names
+  ##### also this will need long time to run, becasue this is a data.frame with 10104 rows and 2000+ columns. So I'll run this and then I provide guys the .RData. 
+
+```
+
+
+###Feature Scoring:
+
+##Levenshtein edit distance:
+
+```{r}
+library(stringr)
+threshold<-10
+score<-data.frame()
+dists<-0
+load("candidate_errors.RData") 
+for (j in 1:length(errorwords)){
+  for (i in 1:nrow(candidate_error)){
+    #characters<-min(nchar(candidate[i,1]),nchar(errorwords[j]))
+    # str_c<-strsplit(candidate[i,1], "")
+    # str_e<-strsplit(errorwords[j], "")
+    # for (k in characters){
+    #   char_c_check<-str_c[[1]][k]
+    #   char_e_check<-str_e[[1]][k]
+    #   if(char_c_check!=char_e_check){
+    #     dists=dists+1+(nchar(candidate[i,1])-nchar(errorwords[j]))
+    #   }
+    # }
+    dists<-adist(errorwords[j],candidate_error[i,1])
+    score[i,j]<-1-(dists/(threshold+1))
+  }
+}
+
+save(score, file = "score_L.RData")
+#score<-load("/Users/lingyizhao/Desktop/score.RData")
+```
+
+```{r}
+load("candidate_errors.RData") 
+```
+
+##String Similarity
+```{r}
+nlcs<- function(str1, str2,index) {
+    l1 <- nchar(str1)
+    l2 <- nchar(str2)
+    str1 <- unlist(strsplit(str1,""))
+    #print(str1)
+    str2 <- unlist(strsplit(str2,""))
+    if(index == 1){
+      l1 <- l1-1
+      l2 <- l2-1
+      str1 <- str1[-1]
+      str2 <- str2[-1]
+    }
+  
+    nlcs_value <- (((LCS(str1, str2)$LLCS)^2)*2)/(l1+l2)
+    return(nlcs_value)
+}
+nlcs("word","mother",1)
+```
+
+
+```{r}
+score2<-data.frame()
+
+for (j in 1:length(errorwords)){
+  for (i in 1:nrow(candidate_errors)){
+#    for (j in 1:10){
+#  for (i in 1:10){
+    nlcs_value<-nlcs(errorwords[j],candidate_errors[i,1],0)
+    nmnlcs1 <- nlcs(errorwords[j],candidate_errors[i,1],1)
+    n<- ceiling(nchar(errorwords[j])/2)
+    nmnlcsn <- nlcs(errorwords[j],candidate_errors[i,1],n)
+    z <- nchar(errorwords[j])
+    nmnlcsz <- nlcs(errorwords[j],candidate_errors [i,1],z)
+    score2[i,j]<-0.25*nlcs_value+0.25*nmnlcs1+0.25*nmnlcsn+0.25*nmnlcsz
+  }
+}
+```
+
+```{r}
+save(score2, file = "score_SM.RData")
+```
+
+##Exact-context popularity:
+
+```{r}
+
+```
+
+##Language popularity:
+
+```{r}
+
+```
+
+##Lexion existance:
+
+```{r}
+
+```
+
+##Exact-context popularity:
+
+```{r}
+
+```
+
+##Relaxed-context popularity:
+
+```{r}
+group=5
+#paper_e<-readLines('/Users/lingyizhao/Desktop/test_clean.txt')
+#paper_c<-readLines('/Users/lingyizhao/Desktop/test_clean_truth.txt')
+index_e<-data.frame()
+index_e[,1]<-errorwords
+for (g in nrow(errorwords)){
+  index_e[g,2]<-which(candidate==errorwords[g])
+  index1<-index_e[g,2]-4
+  index9<-index_e[g,2]+4
+  index_e[g,3]<-paste(candidate[index1:index9,1], collapse = " ")
+}
+candidate_replace_error<-data.matrix()
+row_total<-threshold_c*errorwords
+a<-1
+for (b in 1:nrow(errorwords)){
+  for (d in 2:(ncol(candidate_error))){
+    candidate_replace_error[a,]<-gsub(index_e[b,1],candidate_error[b,d],index_e[b,3] )
+  }
+}
+
+```
+
+
+```{r}
+getwd()
+library(readxl)
+error_truth <- read_excel('Error_truth_total.xlsx')
+#error_truth<-read.csv('Error_truth.csv')
+#error_truth
+#sample(error_truth)
+library(dplyr)
+
+dim(error_truth)
+
+#a <- error_truth$Truth %in% candidate_errors
+a <- error_truth$Error %in% errorwords
+a<-a[which(a == TRUE)]
+length(a)
+
+a <-   errorwords %in%error_truth$Error
+#a<-a[which(a == TRUE)]
+length(a)
+label <- as.numeric(a)
+
+b <- intersect(errorwords,error_truth$Error)
+length(b)
+
+train <- error_truth %>% sample_frac(.8)
+dim(train)
+#length(errorwords)
+
+#dim(error_truth)
+```
+
+###Regression model: random forest:
+
+```{r}
+#install.packages("randomForest")
+library(randomForest)
+set.seed(100)
+score_sort<-data.frame()
+#Construct trsining set:
+#First, we construct a candidate set for each error containing top 10 candidates scored by each feature. 
+for (h in ncol(score)){
+  
+    score_sort[,h]<-candidate[order(score[,h], decreasing = TRUE),1]
+  
+  score_top10[,h]<-score_sort[1:10,]
+}
+
+
+#Then, we select a subset of errors, whose intended word exists in the candidate set.
+##find the intended word firstly:
+
+```
+
+```{r}
+lexicon_existance <- load("lexicon_existance.RData") 
+variable2 <- load("score_SM.RData") 
+variable4 <- all_grps$group1
+variable2 <- score2
+variable2
+```
+
+
+```{r}
+library(readxl)
+library(randomForest)
+error_truth <- read_excel('Error_truth_total.xlsx')
+#error_truth<-read.csv("Error_truth_total.csv")
+
+total_final_data<-data.frame()
+total_final_data<-data.frame(rep(errorwords, each=5))
+i<-1
+for (k in 1:nrow(candidate_errors)){
+  total_final_data[i:(i+4),2]<-matrix(t(candidate_errors[k, 1:5]))
+  total_final_data[i:(i+4),3]<-matrix(t(variable2[k, 1:5]))
+  total_final_data[i:(i+4),4]<-matrix(t(variable4[k, 1:5]))
+  i<-i+5
+}
+
+#for (p in 1:nrow(total_final_data)){
+#  temp<-rep(total_final_data[p,1:2], nrow(error_truth))
+#  temp<-matrix(temp, nrow(error_truth), ncol(error_truth), byrow = T)
+#  c<- temp==error_truth
+#  check=apply(c, 1, all)
+#  res<-rbind(res, any(check))
+#}
+a <- matrix(row.match(total_final_data[,1:2],error_truth[,2:3]))
+x1 <- replace(a,is.na(a),0)
+x1[x1>0] = 1
+
+total_final_data$V5 <- x1
+#for (k in 1:nrow(candidate_errors)){
+  #total_final_data[i:(i+4),2]<-matrix(t(variable1[k, 1:5]))
+#  total_final_data[i:(i+4),3]<-matrix(t(variable2[k, 1:5]))
+  #total_final_data[i:(i+4),4]<-matrix(t(variable3[k, 1:5]))
+  #total_final_data[i:(i+4),4]<-matrix(t(variable4[k, 1:5]))
+#  i<-i+5
+#}
+
+number<-sample(1:nrow(total_final_data), nrow(total_final_data)*0.8)
+trainset<-total_final_data[1:9500, ]
+testset <- total_final_data[9501:11875, ]
+model<-randomForest(trainset[,3:4], y=trainset$V5, ntree=100)
+pred <- predict(model, testset[,3:4])
+pred<-matrix(pred)
+dim(label)
+dim(trainset)
+model
+```
+
